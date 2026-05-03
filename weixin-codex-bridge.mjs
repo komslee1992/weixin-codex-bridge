@@ -247,6 +247,7 @@ function normalizeResponseMode(mode) {
 function shouldUseFullResponse(text, state) {
   const trimmed = String(text || "").trim();
   if (normalizeResponseMode(state.responseMode) === "full") return true;
+  if (trimmed.startsWith("/")) return true;
   return /^(详细|完整|深入|执行|任务|代码|查一下|搜索|修复|实现|部署|安装|运行|分析)[:：\s]/i.test(trimmed);
 }
 
