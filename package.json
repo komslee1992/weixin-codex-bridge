@@ -11,10 +11,16 @@
     "weixin:sync": "node ./weixin-codex-bridge.mjs sync",
     "weixin:reset": "node ./weixin-codex-bridge.mjs reset"
   },
-  "keywords": [],
+  "keywords": [
+    "codex",
+    "wechat",
+    "weixin",
+    "bridge",
+    "agent"
+  ],
   "author": "",
   "license": "MIT",
-  "description": "Personal WeChat bridge for Codex using weixin-agent-sdk and codex-acp.",
+  "description": "微信 Codex 桥接助手：把个人微信会话连接到 Codex 的开源桥接工具。",
   "dependencies": {
     "@zed-industries/codex-acp": "0.12.0",
     "weixin-acp": "0.6.0",

@@ -1,4 +1,6 @@
-# Weixin Codex Bridge
+# 微信 Codex 桥接助手
+
+> English package name: `weixin-codex-bridge`
 
 把个人微信会话连接到 Codex 的轻量桥接工具。它基于 `weixin-agent-sdk` 接收微信消息，用 `weixin-acp` 和 `@zed-industries/codex-acp` 把消息转给 Codex，并只允许一个已绑定的微信会话与 Codex 通信。
 
