@@ -1,0 +1,8 @@
+node_modules/
+logs/
+*.log
+*.jsonl
+weixin-bridge.config.json
+weixin-bridge.state.json
+weixin-sync.jsonl
+logs/resume-*.txt

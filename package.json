@@ -1,0 +1,23 @@
+{
+  "name": "weixin-codex-bridge",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "weixin-codex-bridge.mjs",
+  "scripts": {
+    "postinstall": "node ./scripts/patch-weixin-sdk.mjs",
+    "weixin:bind": "node ./weixin-codex-bridge.mjs bind",
+    "weixin:bridge": "node ./weixin-codex-bridge.mjs",
+    "weixin:status": "node ./weixin-codex-bridge.mjs status",
+    "weixin:sync": "node ./weixin-codex-bridge.mjs sync",
+    "weixin:reset": "node ./weixin-codex-bridge.mjs reset"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "description": "Personal WeChat bridge for Codex using weixin-agent-sdk and codex-acp.",
+  "dependencies": {
+    "@zed-industries/codex-acp": "0.12.0",
+    "weixin-acp": "0.6.0",
+    "weixin-agent-sdk": "0.5.0"
+  }
+}
