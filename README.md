@@ -17,6 +17,7 @@
 - `/mode light` 让微信闲聊短回复，节省 token。
 - `/policy unsafe 确认高权限` 临时处理 Windows sandbox / `spawn EPERM` 问题。
 - `weixin-sync.jsonl` 记录微信侧收发事件，方便桌面端手动同步。
+- 桌面端可以排队发送完成通知到微信，适合长任务跑完后提醒自己。
 
 ## 环境要求
 
@@ -100,6 +101,12 @@ npm.cmd run weixin:status
 npm.cmd run weixin:sync
 ```
 
+发送桌面完成通知：
+
+```powershell
+npm.cmd run weixin:notify -- "任务完成：报告已生成"
+```
+
 ## 微信命令
 
 - `/help` 或 `/帮助`：查看命令。
@@ -165,6 +172,24 @@ npm.cmd run weixin:sync
 ```
 
 然后根据里面的 `events` 和 `state` 手动同步上下文。
+
+## 桌面完成通知
+
+桌面端任务结束时，可以排一条通知给微信：
+
+```powershell
+.\run-weixin-notify.cmd "任务完成：报告已生成"
+```
+
+也可以用 npm script：
+
+```powershell
+npm.cmd run weixin:notify -- "任务完成：报告已生成"
+```
+
+通知会先写入 `weixin-notify-queue.jsonl`，由常驻桥接进程发送到微信。这个文件是运行态队列，已经被 `.gitignore` 排除。
+
+注意：`weixin-agent-sdk` 的主动发送依赖微信侧最近消息里的 `context_token`。如果桥接刚重启后还没有收到过微信消息，通知会暂存在队列里；从绑定微信会话里发送任意消息后，队列会自动重试发送。
 
 ## 处理 `spawn EPERM` / Sandbox 问题
 

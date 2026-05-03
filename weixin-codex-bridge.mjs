@@ -11,10 +11,14 @@ const CONFIG_PATH = path.join(__dirname, "weixin-bridge.config.json");
 const STATE_PATH = path.join(__dirname, "weixin-bridge.state.json");
 const LOG_PATH = path.join(__dirname, "weixin-bridge.log");
 const SYNC_LOG_PATH = path.join(__dirname, "weixin-sync.jsonl");
+const NOTIFY_QUEUE_PATH = path.join(__dirname, "weixin-notify-queue.jsonl");
 const BIND_PHRASE = process.env.WEIXIN_BIND_PHRASE || "绑定Codex";
 const POLICY_CONFIRM_PHRASE = "确认高权限";
 const LOG_MAX_BYTES = 5 * 1024 * 1024;
 const RESUME_TIMEOUT_MS = 5 * 60 * 1000;
+const NOTIFY_POLL_MS = 3000;
+
+let notifyRetryAfter = 0;
 
 function now() {
   return new Date().toISOString();
@@ -56,8 +60,100 @@ function readSyncSnapshot(limit = 40) {
     state: readState(),
     config: readConfig(),
     syncLogPath: SYNC_LOG_PATH,
+    notifyQueuePath: NOTIFY_QUEUE_PATH,
     events,
   };
+}
+
+function enqueueNotification(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) {
+    throw new Error("Notification text is empty.");
+  }
+
+  rotateFileIfLarge(NOTIFY_QUEUE_PATH);
+  const item = {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    ts: now(),
+    text: trimmed,
+  };
+  fs.appendFileSync(NOTIFY_QUEUE_PATH, `${JSON.stringify(item)}\n`, "utf8");
+  log(`[notify] queued ${item.id}`);
+  return item;
+}
+
+function readNotificationQueue() {
+  if (!fs.existsSync(NOTIFY_QUEUE_PATH)) return [];
+  const items = [];
+  for (const line of fs.readFileSync(NOTIFY_QUEUE_PATH, "utf8").split(/\r?\n/).filter(Boolean)) {
+    try {
+      const item = JSON.parse(line);
+      if (item?.id && item?.text) items.push(item);
+    } catch {}
+  }
+  return items;
+}
+
+function writeNotificationQueue(items) {
+  if (!items.length) {
+    if (fs.existsSync(NOTIFY_QUEUE_PATH)) fs.unlinkSync(NOTIFY_QUEUE_PATH);
+    return;
+  }
+
+  const tmpPath = `${NOTIFY_QUEUE_PATH}.tmp`;
+  fs.writeFileSync(tmpPath, `${items.map((item) => JSON.stringify(item)).join("\n")}\n`, "utf8");
+  fs.renameSync(tmpPath, NOTIFY_QUEUE_PATH);
+}
+
+async function processNotificationQueue(bot, config) {
+  if (Date.now() < notifyRetryAfter) return;
+
+  const items = readNotificationQueue();
+  if (!items.length) return;
+
+  const remaining = [];
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    try {
+      await bot.sendMessage(item.text);
+      log(`[notify] sent ${item.id}`);
+      syncLog({
+        event: "desktop_notification",
+        direction: "out",
+        conversationId: config.allowedConversationId || "",
+        text: item.text,
+        notifyId: item.id,
+      });
+    } catch (error) {
+      remaining.push(...items.slice(index));
+      notifyRetryAfter = Date.now() + 15000;
+      log(`[notify] failed ${item.id}: ${error instanceof Error ? error.message : String(error)}`);
+      break;
+    }
+  }
+
+  if (!remaining.length) notifyRetryAfter = 0;
+  writeNotificationQueue(remaining);
+}
+
+function startNotificationPump(bot, config, abortSignal) {
+  let running = false;
+  const tick = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await processNotificationQueue(bot, config);
+    } finally {
+      running = false;
+    }
+  };
+
+  const timer = setInterval(() => {
+    tick().catch((error) => log(`[notify] pump error: ${error instanceof Error ? error.message : String(error)}`));
+  }, NOTIFY_POLL_MS);
+  timer.unref?.();
+  abortSignal?.addEventListener("abort", () => clearInterval(timer), { once: true });
+  tick().catch((error) => log(`[notify] pump error: ${error instanceof Error ? error.message : String(error)}`));
 }
 
 function rotateFileIfLarge(filePath) {
@@ -421,6 +517,7 @@ class WhitelistAgent {
 
   async chat(request) {
     const allowed = this.config.allowedConversationId;
+    notifyRetryAfter = 0;
     syncLog({
       direction: "in",
       conversationId: request.conversationId,
@@ -733,6 +830,7 @@ async function runBridge() {
     log,
   });
 
+  startNotificationPump(bot, config, ac.signal);
   log("Weixin Codex bridge started.");
   await bot.wait();
 }
@@ -767,6 +865,8 @@ if (command === "status") {
     configPath: CONFIG_PATH,
     logPath: LOG_PATH,
     syncLogPath: SYNC_LOG_PATH,
+    notifyQueuePath: NOTIFY_QUEUE_PATH,
+    pendingNotifications: readNotificationQueue().length,
     state: readState(),
     statePath: STATE_PATH,
     codexAcp: localCodexAcpCommand(),
@@ -774,6 +874,19 @@ if (command === "status") {
 } else if (command === "sync") {
   const limit = Number(process.argv[3] || "40");
   console.log(JSON.stringify(readSyncSnapshot(Number.isFinite(limit) ? limit : 40), null, 2));
+} else if (command === "notify") {
+  const text = process.argv.slice(3).join(" ");
+  try {
+    const item = enqueueNotification(text);
+    console.log(JSON.stringify({
+      ok: true,
+      queued: item,
+      notifyQueuePath: NOTIFY_QUEUE_PATH,
+    }, null, 2));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
 } else if (command === "reset") {
   resetConfig();
 } else if (command === "bind") {

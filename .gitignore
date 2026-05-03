@@ -5,4 +5,5 @@ logs/
 weixin-bridge.config.json
 weixin-bridge.state.json
 weixin-sync.jsonl
+weixin-notify-queue.jsonl
 logs/resume-*.txt

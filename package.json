@@ -9,6 +9,7 @@
     "weixin:bridge": "node ./weixin-codex-bridge.mjs",
     "weixin:status": "node ./weixin-codex-bridge.mjs status",
     "weixin:sync": "node ./weixin-codex-bridge.mjs sync",
+    "weixin:notify": "node ./weixin-codex-bridge.mjs notify",
     "weixin:reset": "node ./weixin-codex-bridge.mjs reset"
   },
   "keywords": [
