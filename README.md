@@ -186,17 +186,6 @@ npm.cmd run weixin:sync
 
 `unsafe` 会让隐藏 Codex 进程使用 `danger-full-access`，只建议短时间开启。
 
-## 运行态文件
-
-这些文件是本机运行态或敏感信息，已经在 `.gitignore` 中排除：
-
-- `weixin-bridge.config.json`
-- `weixin-bridge.state.json`
-- `weixin-sync.jsonl`
-- `weixin-bridge.log`
-- `logs/`
-- `node_modules/`
-
 ## 重置绑定
 
 ```powershell
@@ -208,6 +197,5 @@ npm.cmd run weixin:reset
 ## 安全提示
 
 - 只绑定你自己的微信会话。
-- 不要提交运行态文件、日志、同步记录。
 - 谨慎使用 `/policy unsafe 确认高权限`。
 - 微信消息和 Codex 回复会以明文写入 `weixin-sync.jsonl`，如果不需要桌面同步，可以定期删除该文件。
